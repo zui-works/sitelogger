@@ -1287,10 +1287,25 @@ function renderRouteList(){
   });
 }
 
+// prompt で数字を選んでもらう場面の入力を整える。
+// iPhoneの日本語キーボードでは「２」のような全角数字がそのまま返ることがあり、
+// '2' との比較が成立せず、押しても何も起きない（削除できない）状態になっていた。
+// 音声入力・測点名と同じ全角まわりの事故なので、ここでも吸収する。
+function normalizeChoice(s){
+  if(typeof s!=='string')return '';
+  return s.replace(/[０-９]/g,c=>String.fromCharCode(c.charCodeAt(0)-0xFEE0)).trim();
+}
 function showRouteMenu(id){
   const r=routes.find(r=>r.id===id);
   if(!r)return;
-  const action=prompt(`「${r.name}」の操作を選んでください:\n1 → 名前を変更\n2 → 削除\nキャンセル → 閉じる`);
+  const raw=prompt(`「${r.name}」の操作を選んでください:\n1 → 名前を変更\n2 → 削除\nキャンセル → 閉じる`);
+  if(raw===null)return;            // キャンセルは何もしない
+  const action=normalizeChoice(raw);
+  if(action==='')return;           // 空のままOKを押した場合も何もしない
+  if(action!=='1'&&action!=='2'){
+    alert('1 か 2 を入力してください。');
+    return;
+  }
   if(action==='1'){
     const name=prompt('新しい路線名',r.name);
     if(name){r.name=name;saveToStorage();renderRouteList();}
@@ -1298,6 +1313,21 @@ function showRouteMenu(id){
     if(routes.length<=1){alert('最後の路線は削除できません');return;}
     if(confirm(`「${r.name}」を削除しますか？`)){
       routes=routes.filter(x=>x.id!==id);
+      // 開いていた路線を消した場合は、選択も外す。
+      // 残したままだと saveCurrentState が存在しない路線を探しに行く。
+      if(currentRouteId===id){ currentRouteId=null; rows=[]; rowsReturn=[]; obsLoaded=false; }
+      // 保存先からも先に消しておく。
+      // saveToStorage は「他のタブで増えた路線」を取り込み直す作りになっているため、
+      // メモリ上から消しただけだと、保存した次の瞬間に保存先から読み戻されて復活する。
+      // 実際これが原因で、削除しても路線が消えない状態になっていた。
+      try{
+        const cur=JSON.parse(localStorage.getItem('suijun_v06')||'null');
+        if(cur&&Array.isArray(cur.routes)){
+          cur.routes=cur.routes.filter(er=>er&&er.id!==id);
+          if(cur.currentRouteId===id) cur.currentRouteId=null;
+          localStorage.setItem('suijun_v06',JSON.stringify(cur));
+        }
+      }catch(e){}
       deleteRoutePhotosFromDB(id);
       deleteSketchFromDB(id);
       saveToStorage();renderRouteList();

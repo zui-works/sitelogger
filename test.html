@@ -283,6 +283,15 @@ function defineTests(){
       eq(W.voiceToNum('ー1.234'),        -1.234, '長音記号');
       eq(W.voiceToNum('1.234'),           1.234, '正の値はそのまま');
     });
+    // iPhoneの日本語キーボードは「２」のような全角数字を返すことがある。
+    // メニューの選択がこれを弾くと、押しても何も起きない状態になる（路線が削除できない事故）。
+    check('メニューの番号入力（全角・空白）を受け付ける', () => {
+      eq(W.normalizeChoice('2'),   '2', '半角');
+      eq(W.normalizeChoice('２'),  '2', '全角');
+      eq(W.normalizeChoice(' ２ '), '2', '前後に空白');
+      eq(W.normalizeChoice('１'),  '1', '全角の1');
+      eq(W.normalizeChoice(''),    '',  '空欄はそのまま');
+    });
     check('測点名の整形', () => {
       eq(W.normalizePointName('ビーエム いち'), 'BMいち', 'BMへの言い換え');
       eq(W.normalizePointName('ナンバー3'),     'No.3',   'ナンバー');
