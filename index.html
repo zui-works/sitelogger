@@ -167,6 +167,9 @@ body{background:var(--color-background-secondary);color:var(--color-text-primary
 .pin-pp{position:absolute;background:var(--color-background-primary);border:0.5px solid var(--color-border-secondary);border-radius:var(--border-radius-md);padding:8px 10px;z-index:10;display:none;min-width:160px;touch-action:auto;}
 .pin-pp input{width:100%;padding:4px 6px;font-size:13px;border:0.5px solid var(--color-border-secondary);border-radius:4px;background:var(--color-background-secondary);color:var(--color-text-primary);margin-bottom:5px;}
 .pin-pp button{font-size:12px;padding:3px 8px;border:0.5px solid var(--color-border-secondary);border-radius:4px;cursor:pointer;background:var(--color-background-secondary);color:var(--color-text-primary);margin-right:4px;}
+.pin-chips{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:6px;max-height:66px;overflow-y:auto;}
+.pin-chips button{margin:0;font-size:11.5px;padding:3px 7px;border-radius:999px;}
+.pin-chips button.on{background:#185FA5;color:#fff;border-color:#185FA5;}
 .ptrow{display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;margin-bottom:8px;-webkit-overflow-scrolling:touch;}
 .pth{flex-shrink:0;width:68px;height:51px;border-radius:5px;border:1.5px solid var(--color-border-secondary);cursor:pointer;overflow:hidden;position:relative;background:#1c1c1c;}
 .pth.active{border-color:#185FA5;}
@@ -612,6 +615,7 @@ body{background:var(--color-background-secondary);color:var(--color-text-primary
       </div>
       <div class="pin-pp" id="pin-pp">
         <div style="font-size:11px;color:var(--color-text-secondary);margin-bottom:4px;">測点名</div>
+        <div class="pin-chips" id="pin-chips"></div>
         <input type="text" id="pin-name" list="pts-dl" placeholder="BM1, No.1..." style="font-size:16px;">
         <datalist id="pts-dl"></datalist>
         <div><button onclick="confirmPin()">打つ</button><button onclick="cancelPin()">戻る</button></div>
@@ -1339,6 +1343,7 @@ function openRoute(id){
   if(currentRouteId&&currentRouteId!==id){saveCurrentState();saveSketchNow();}
   currentRouteId=id;
   loadCurrentState();
+  skLoadedRoute=null;   // 読み込みが終わるまでは保存させない
   loadSketchForRoute(id);
   renderTbl();
   document.getElementById('obs-title').textContent=routes.find(r=>r.id===id)?.name||'';
@@ -2075,7 +2080,7 @@ async function restoreApply(mode){
     // 画面に残っている旧路線の入力値が復元後のデータを上書きしないよう、
     // 現在の路線選択をいったん解除してホーム画面へ戻す。
     currentRouteId=null;rows=[];rowsReturn=[];obsLoaded=false;
-    skDirtyRoute=null;clearTimeout(skSaveTimer);pages=[];curPage=0;newSkPage();
+    skDirtyRoute=null;skLoadedRoute=null;clearTimeout(skSaveTimer);pages=[];curPage=0;newSkPage();
     localStorage.setItem('suijun_v06',JSON.stringify({routes,currentRouteId:null,v:6}));
     bkClose();
     hideKbBar();
@@ -3234,6 +3239,17 @@ function skStart(e){
   pinchStart=null;
   const{x,y}=getXY(e);
   if(sk_tool==='pin'){
+    // 既にあるピンに触れたら、それを掴んで動かす。空いている場所なら新規設置。
+    const hit=hitTestPin(x,y);
+    if(hit>=0){
+      const pin=pages[curPage].pins[hit];
+      sk_selPin=hit;
+      pinDrag={idx:hit,dx:x-pin.x,dy:y-pin.y,moved:false};
+      hidePinMenu();
+      pinTouchStart=null;
+      return;
+    }
+    sk_selPin=-1;hidePinMenu();
     // ピンはtouchendで確定するので開始位置だけ記録
     pinTouchStart={x,y};
     return;
@@ -3272,6 +3288,19 @@ function skMove(e){
     return;
   }
   const{x,y}=getXY(e);
+  // ピンのドラッグ移動
+  if(pinDrag){
+    const pin=pages[curPage].pins[pinDrag.idx];
+    if(pin){
+      const nx=x-pinDrag.dx, ny=y-pinDrag.dy;
+      if(!pinDrag.moved&&Math.hypot(nx-pin.x,ny-pin.y)>3)pinDrag.moved=true;
+      // 紙からはみ出さないようにする
+      pin.x=Math.max(0,Math.min(W,nx));
+      pin.y=Math.max(0,Math.min(H,ny));
+      renderPins();
+    }
+    return;
+  }
   // テキストのドラッグ移動
   if(txDrag){
     const list=skTexts(),t=list[txDrag.idx];
@@ -3297,6 +3326,16 @@ function skMove(e){
 function skEnd(e){
   e.preventDefault();
   if(e.touches&&e.touches.length<2)pinchStart=null;
+  // ピンのドラッグ終了：動かしたなら履歴に積み、動かしていない＝タップなら
+  // 名前変更・削除のメニューを出す（テキストと同じ操作感に揃えている）
+  if(pinDrag){
+    const moved=pinDrag.moved;
+    pinDrag=null;
+    if(moved){pushH();hidePinMenu();}
+    else{positionPinMenu();}
+    sk_pending=false;sk_draw=false;
+    return;
+  }
   // ピンツール: 指を離した位置に設置（ズーム操作と区別）
   if(sk_tool==='pin'&&pinTouchStart){
     const{x,y}=e.changedTouches
@@ -3338,10 +3377,10 @@ function newSkPage(img=null){
   const dr=document.createElement('canvas');dr.width=W;dr.height=H;
   pages.push({bg,dr,pins:[],texts:[],hist:[],histIdx:-1});switchPg(pages.length-1);markSketchDirty();
 }
-function switchPg(idx){curPage=idx;sk_selTx=-1;txDrag=null;if(sk_txInp){sk_txInp.remove();sk_txInp=null;sk_txEditIdx=-1;}hideTxMenu();bgCtx.clearRect(0,0,W,H);bgCtx.drawImage(pages[idx].bg,0,0);drCtx.clearRect(0,0,W,H);drCtx.drawImage(pages[idx].dr,0,0);renderPins();renderThumbs();}
+function switchPg(idx){curPage=idx;sk_selTx=-1;txDrag=null;sk_selPin=-1;pinDrag=null;hidePinMenu();if(sk_txInp){sk_txInp.remove();sk_txInp=null;sk_txEditIdx=-1;}hideTxMenu();bgCtx.clearRect(0,0,W,H);bgCtx.drawImage(pages[idx].bg,0,0);drCtx.clearRect(0,0,W,H);drCtx.drawImage(pages[idx].dr,0,0);renderPins();renderThumbs();}
 function saveDr(){const c=pages[curPage].dr.getContext('2d');c.clearRect(0,0,W,H);c.drawImage(drCv,0,0);}
 function pushH(){saveDr();const p=pages[curPage];p.hist=p.hist.slice(0,p.histIdx+1);const s=document.createElement('canvas');s.width=W;s.height=H;s.getContext('2d').drawImage(drCv,0,0);p.hist.push({cv:s,pins:JSON.parse(JSON.stringify(p.pins)),texts:JSON.parse(JSON.stringify(p.texts||[]))});p.histIdx=p.hist.length-1;updThumb(curPage);markSketchDirty();}
-function skUndo(){const p=pages[curPage];if(p.histIdx>0){p.histIdx--;const s=p.hist[p.histIdx];drCtx.clearRect(0,0,W,H);drCtx.drawImage(s.cv,0,0);p.pins=JSON.parse(JSON.stringify(s.pins));p.texts=JSON.parse(JSON.stringify(s.texts||[]));saveDr();}else if(p.histIdx===0){p.histIdx=-1;drCtx.clearRect(0,0,W,H);p.pins=[];p.texts=[];saveDr();}sk_selTx=-1;hideTxMenu();renderPins();updThumb(curPage);markSketchDirty();}
+function skUndo(){const p=pages[curPage];if(p.histIdx>0){p.histIdx--;const s=p.hist[p.histIdx];drCtx.clearRect(0,0,W,H);drCtx.drawImage(s.cv,0,0);p.pins=JSON.parse(JSON.stringify(s.pins));p.texts=JSON.parse(JSON.stringify(s.texts||[]));saveDr();}else if(p.histIdx===0){p.histIdx=-1;drCtx.clearRect(0,0,W,H);p.pins=[];p.texts=[];saveDr();}sk_selTx=-1;hideTxMenu();sk_selPin=-1;hidePinMenu();renderPins();updThumb(curPage);markSketchDirty();}
 // 現在のページだけを白紙に戻す。取り消し履歴には積むので「戻る」で復帰できる。
 function skClear(){
   if(!confirm('このページの絵・テキスト・測点ピンを消します。よろしいですか？\n（「↩」で元に戻せます）'))return;
@@ -3358,27 +3397,61 @@ function skClearAll(){
   newSkPage(); // 白紙を1枚作る（switchPg と markSketchDirty もこの中で走る）
   renderThumbs();
 }
-function setTool(t){sk_tool=t;['pen','marker','pin','text','eraser'].forEach(n=>{const b=document.getElementById('tb-'+n);if(b)b.classList.toggle('active',n===t);});if(sk_txInp){sk_txInp.remove();sk_txInp=null;}
+function setTool(t){sk_tool=t;sk_selPin=-1;pinDrag=null;if(typeof hidePinMenu==='function')hidePinMenu();['pen','marker','pin','text','eraser'].forEach(n=>{const b=document.getElementById('tb-'+n);if(b)b.classList.toggle('active',n===t);});if(sk_txInp){sk_txInp.remove();sk_txInp=null;}
   // テキスト以外の道具に持ち替えたら選択状態は解除する（線を引くときに邪魔になるため）
   if(t!=='text'){sk_selTx=-1;hideTxMenu();renderPins();}}
 function setColor(c,el){sk_color=c;document.querySelectorAll('.cd').forEach(d=>d.classList.remove('active'));el.classList.add('active');}
 
-function openPin(x,y){
-  pendingPin={x,y};
+// 観測表に入っている測点名を、タップで選べるボタンとして出す。
+// datalistも残してあるが、iPhoneのSafariでは候補が出ないことがあり、
+// 現場で指だけで選べる手段が実質なかった。
+function fillPinChips(current){
+  const box=document.getElementById('pin-chips');
+  if(!box)return;
+  const all=[...rows,...rowsReturn].map(r=>r.point).filter(p=>p&&String(p).trim());
+  const uniq=[...new Set(all)].slice(0,12);
+  box.innerHTML=uniq.map(p=>`<button type="button" class="${p===current?'on':''}" onclick="pickPinName('${jsAttr(p)}')">${esc(p)}</button>`).join('');
+  box.style.display=uniq.length?'flex':'none';
+}
+function pickPinName(name){
+  const el=document.getElementById('pin-name');
+  el.value=name;
+  fillPinChips(name);
+}
+// x,y を渡せば新規設置、idx を渡せば既存ピンの名前変更
+function openPin(x,y,idx){
+  pendingPin=(idx===undefined)?{x,y}:{idx};
   const all=[...rows,...rowsReturn].filter(r=>r.point);
   document.getElementById('pts-dl').innerHTML=[...new Set(all.map(r=>r.point))].map(p=>`<option value="${esc(p)}">`).join('');
   const pp=document.getElementById('pin-pp');
   const cwR=document.getElementById('cw').getBoundingClientRect();
   const baseW=cwR.width;
   // CSS高さ=baseW（正方形）なのでyもbaseWで換算
-  const screenX=vp.ox+(x/W)*baseW*vp.scale;
-  const screenY=vp.oy+(y/H)*baseW*vp.scale;
+  const pin=(pendingPin&&pendingPin.idx!==undefined)?pages[curPage].pins[pendingPin.idx]:null;
+  const ax=pin?pin.x:x, ay=pin?pin.y:y;
+  const screenX=vp.ox+(ax/W)*baseW*vp.scale;
+  const screenY=vp.oy+(ay/H)*baseW*vp.scale;
   pp.style.left=Math.min(screenX+8, cwR.width-165)+'px';
   pp.style.top=Math.max(screenY-85, 4)+'px';
   pp.style.display='block';
-  document.getElementById('pin-name').value='';document.getElementById('pin-name').focus();
+  const inp=document.getElementById('pin-name');
+  inp.value=pin?pin.name:'';
+  fillPinChips(inp.value);
+  inp.focus();
 }
-function confirmPin(){const name=document.getElementById('pin-name').value||'測点';if(pendingPin){pages[curPage].pins.push({x:pendingPin.x,y:pendingPin.y,name});renderPins();pushH();}document.getElementById('pin-pp').style.display='none';pendingPin=null;}
+function confirmPin(){
+  const name=document.getElementById('pin-name').value||'測点';
+  if(pendingPin){
+    if(pendingPin.idx!==undefined){
+      const pin=pages[curPage].pins[pendingPin.idx];
+      if(pin)pin.name=name;
+    }else{
+      pages[curPage].pins.push({x:pendingPin.x,y:pendingPin.y,name});
+    }
+    renderPins();pushH();
+  }
+  document.getElementById('pin-pp').style.display='none';pendingPin=null;
+}
 function cancelPin(){document.getElementById('pin-pp').style.display='none';pendingPin=null;}
 document.getElementById('pin-name').addEventListener('keydown',e=>{if(e.key==='Enter')confirmPin();if(e.key==='Escape')cancelPin();});
 
@@ -3398,6 +3471,27 @@ function txBox(t){
   const w=_txMeasure.measureText(t.text).width;
   // fillTextの基準線は文字の下端なので、上端はおよそ size 分だけ上になる
   return {x:t.x, y:t.y-t.size*0.8, w:w, h:t.size*1.15};
+}
+// ピンのあたり判定。指で掴めるよう、丸と名前ラベルの両方を対象にし、
+// 判定はキャンバス座標で少し広めに取る（手袋をしていても外しにくいように）。
+let pinDrag=null;   // ピンをドラッグ中の状態
+let sk_selPin=-1;   // 選択中のピン（タップしたとき小メニューを出す）
+function pinHitPad(){
+  const cwR=document.getElementById('cw').getBoundingClientRect();
+  const sx=(cwR.width||360)/W;            // キャンバス座標→CSS座標
+  return {sx, r:Math.max(26, 9/sx*2.2)};  // 丸の半径9CSS pxを基準に広げる
+}
+function hitTestPin(x,y){
+  const pins=(pages[curPage]&&pages[curPage].pins)?pages[curPage].pins:[];
+  const {sx,r}=pinHitPad();
+  for(let i=pins.length-1;i>=0;i--){     // 後から置いたものが上
+    const p=pins[i];
+    if(Math.hypot(x-p.x,y-p.y)<=r)return i;
+    // 名前ラベル（丸の右側）も掴める
+    const tw=(p.name.length*7.5+14)/sx, lx=p.x+11/sx, ly=p.y-13/sx, lh=17/sx;
+    if(x>=lx&&x<=lx+tw&&y>=ly&&y<=ly+lh)return i;
+  }
+  return -1;
 }
 function hitTestText(x,y){
   const list=skTexts();
@@ -3449,15 +3543,51 @@ function renderPins(){
     });
     svg+=`</g>`;
   }
-  pins.forEach(p=>{
+  pins.forEach((p,i)=>{
     const px=p.x*sx, py=p.y*sy, tw=p.name.length*7.5+14;
-    svg+=`<g><circle cx="${px}" cy="${py}" r="9" fill="#E24B4A" stroke="#fff" stroke-width="1.5"/>
+    const sel=(i===sk_selPin)?`<circle cx="${px}" cy="${py}" r="15" fill="none" stroke="#185FA5" stroke-width="2" stroke-dasharray="5 3"/>`:'';
+    svg+=`<g>${sel}<circle cx="${px}" cy="${py}" r="9" fill="#E24B4A" stroke="#fff" stroke-width="1.5"/>
       <text x="${px}" y="${py+3.5}" text-anchor="middle" font-size="9" fill="#fff" font-weight="bold" font-family="sans-serif">+</text>
       <rect x="${px+11}" y="${py-13}" width="${tw}" height="17" rx="3" fill="rgba(226,75,74,0.9)"/>
       <text x="${px+16}" y="${py-1}" font-size="10.5" fill="#fff" font-family="sans-serif">${esc(p.name)}</text></g>`;
   });
   svg+=`</svg>`;host.innerHTML=svg;
   if(sk_selTx>=0)positionTxMenu();
+  if(sk_selPin>=0&&!pinDrag)positionPinMenu();
+}
+
+// 選択したピンの上に出す小さなメニュー（名前を変更・削除）
+// テキストの tx-menu と同じ作り。#sk-vp の外に置いて、拡大率の影響を受けないようにする。
+function hidePinMenu(){const m=document.getElementById('pin-menu');if(m)m.style.display='none';}
+function positionPinMenu(){
+  const pins=(pages[curPage]&&pages[curPage].pins)?pages[curPage].pins:[];
+  if(sk_selPin<0||!pins[sk_selPin]){hidePinMenu();return;}
+  const cw=document.getElementById('cw');
+  let m=document.getElementById('pin-menu');
+  if(!m){
+    m=document.createElement('div');m.id='pin-menu';
+    m.style.cssText='position:absolute;z-index:10;display:none;gap:6px;touch-action:auto;';
+    m.innerHTML='<button type="button" onclick="renameSelectedPin()" style="border:none;border-radius:7px;background:#185FA5;color:#fff;font-size:12px;font-weight:600;padding:6px 12px;">名前</button>'
+      +'<button type="button" onclick="deleteSelectedPin()" style="border:none;border-radius:7px;background:#E24B4A;color:#fff;font-size:12px;font-weight:600;padding:6px 12px;">削除</button>';
+    cw.appendChild(m);
+  }
+  const cwR=cw.getBoundingClientRect(), baseW=cwR.width, pin=pins[sk_selPin];
+  const screenX=vp.ox+(pin.x/W)*baseW*vp.scale;
+  const screenY=vp.oy+(pin.y/H)*baseW*vp.scale;
+  m.style.display='flex';
+  m.style.left=Math.max(4,Math.min(screenX, cwR.width-130))+'px';
+  m.style.top=Math.max(4,screenY-44)+'px';
+}
+function renameSelectedPin(){
+  if(sk_selPin<0)return;
+  hidePinMenu();
+  openPin(null,null,sk_selPin);
+}
+function deleteSelectedPin(){
+  const pins=(pages[curPage]&&pages[curPage].pins)?pages[curPage].pins:[];
+  if(sk_selPin<0||!pins[sk_selPin])return;
+  pins.splice(sk_selPin,1);
+  sk_selPin=-1;hidePinMenu();renderPins();pushH();
 }
 
 // 選択したテキストの上に出す小さなメニュー（修正・削除）
@@ -3556,8 +3686,15 @@ function delPg(idx){if(pages.length<=1){skClear();return;}pages.splice(idx,1);cu
 // 路線IDをキーとして保存する。取り消し履歴(hist)は保存しない（再読込でリセットされる）。
 let skSaveTimer=null,skDirtyRoute=null;
 
+// その路線のスケッチを読み込み終えたか。読み込み前に保存すると、
+// 起動直後に用意される白紙で、保存済みのスケッチを上書きしてしまう。
+// 実際これが原因で、ホーム画面で数秒待ってから路線を開くと
+// 描いた線もピンも消えていた（newSkPage が markSketchDirty を呼び、
+// 1.5秒後の自動保存が白紙を書き込んでいた）。
+let skLoadedRoute=null;
 function markSketchDirty(){
   if(!currentRouteId)return;
+  if(skLoadedRoute!==currentRouteId)return;   // 読み込み前は保存しない
   skDirtyRoute=currentRouteId;
   clearTimeout(skSaveTimer);
   skSaveTimer=setTimeout(()=>{saveSketchNow();},1500);
@@ -3576,6 +3713,7 @@ async function saveSketchNow(){
   const rid=skDirtyRoute;
   clearTimeout(skSaveTimer);
   if(!rid)return;
+  if(skLoadedRoute!==rid){skDirtyRoute=null;return;}  // 読み込み前の上書きを防ぐ
   let data;
   try{
     if(pages[curPage])saveDr();
@@ -3618,6 +3756,7 @@ async function loadSketchForRoute(rid){
     // （何も描いていない方眼が全路線ぶん保存されるのを防ぐ）
     pages=[];curPage=0;resetVP();newSkPage();
     clearTimeout(skSaveTimer);if(skDirtyRoute===rid)skDirtyRoute=null;
+    skLoadedRoute=rid;   // 以後この路線は保存してよい
     return;
   }
   const built=[];
@@ -3628,7 +3767,9 @@ async function loadSketchForRoute(rid){
     built.push({bg,dr,pins:(pd&&Array.isArray(pd.pins))?pd.pins:[],texts:(pd&&Array.isArray(pd.texts))?pd.texts:[],hist:[],histIdx:-1});
   }
   if(currentRouteId!==rid)return;
-  pages=built;curPage=0;resetVP();switchPg(0);
+  pages=built;curPage=0;resetVP();
+  skLoadedRoute=rid;   // 読み込み完了。これ以降の変更は保存してよい
+  switchPg(0);
 }
 async function deleteSketchFromDB(rid){
   if(!rid)return;
