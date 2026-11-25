@@ -32,6 +32,10 @@
   --font-mono:'SF Mono','Courier New',monospace;
   /* 表示設定（アプリ内で切り替える） */
   --accent:#185FA5;      /* 画面のアクセント色。PDF出力の色はこれとは別で固定 */
+  /* 暗い背景の上に文字や罫線として置くときの色。
+     濃い青のままだとダークモードで背景に沈んで読めなくなる（戻るボタンが消える）。
+     背景がアクセント色で文字が白、という場所では --accent をそのまま使う。 */
+  --accent-ink:var(--accent);
   --fs-ni:18px;          /* 観測値セル */
   --fs-pi:17px;          /* 測点名セル */
   --fs-di:16px;          /* 視準距離セル */
@@ -72,6 +76,17 @@
     --color-border-tertiary:#2c2c2e;
   }
 }
+/* ダーク時の文字用アクセント（明るめにして読めるようにする） */
+@media(prefers-color-scheme:dark){
+  :root:not([data-theme="light"]):not([data-theme="outdoor"]){--accent-ink:#6FB3F2;}
+  :root:not([data-theme="light"]):not([data-theme="outdoor"])[data-accent="green"]{--accent-ink:#4FC98B;}
+  :root:not([data-theme="light"]):not([data-theme="outdoor"])[data-accent="orange"]{--accent-ink:#F0A258;}
+  :root:not([data-theme="light"]):not([data-theme="outdoor"])[data-accent="black"]{--accent-ink:#d4d4da;}
+}
+:root[data-theme="dark"]{--accent-ink:#6FB3F2;}
+:root[data-theme="dark"][data-accent="green"]{--accent-ink:#4FC98B;}
+:root[data-theme="dark"][data-accent="orange"]{--accent-ink:#F0A258;}
+:root[data-theme="dark"][data-accent="black"]{--accent-ink:#d4d4da;}
 /* アプリ側で「ダーク」を選んだ場合（端末の設定に関係なく暗くする） */
 :root[data-theme="dark"]{
   --color-background-primary:#1c1c1e;
@@ -100,7 +115,7 @@ body{background:var(--color-background-secondary);color:var(--color-text-primary
 .route-card-badge.ng{background:#FCEBEB;color:#A32D2D;}
 .route-card-badge.none{background:var(--color-background-secondary);color:var(--color-text-secondary);}
 .route-card-arrow{color:var(--color-text-secondary);font-size:16px;flex-shrink:0;}
-.new-route-btn{width:100%;padding:13px;border-radius:var(--border-radius-lg);border:1.5px dashed var(--color-border-secondary);background:none;color:var(--accent);font-size:15px;font-weight:500;cursor:pointer;}
+.new-route-btn{width:100%;padding:13px;border-radius:var(--border-radius-lg);border:1.5px dashed var(--color-border-secondary);background:none;color:var(--accent-ink);font-size:15px;font-weight:500;cursor:pointer;}
 .new-route-btn:active{background:var(--color-background-primary);}
 .route-actions{display:flex;gap:8px;margin-bottom:8px;}
 .ract{flex:1;padding:7px;font-size:12px;border:0.5px solid var(--color-border-secondary);border-radius:var(--border-radius-md);cursor:pointer;background:none;color:var(--color-text-secondary);}
@@ -109,14 +124,14 @@ body{background:var(--color-background-secondary);color:var(--color-text-primary
 
 /* ===== 観測画面ヘッダー ===== */
 .obs-header{display:flex;align-items:center;gap:10px;margin-bottom:14px;}
-.back-btn{font-size:14px;padding:6px 10px;border:0.5px solid var(--color-border-secondary);border-radius:var(--border-radius-md);cursor:pointer;background:none;color:var(--accent);white-space:nowrap;}
+.back-btn{font-size:14px;padding:6px 10px;border:0.5px solid var(--color-border-secondary);border-radius:var(--border-radius-md);cursor:pointer;background:none;color:var(--accent-ink);white-space:nowrap;}
 .obs-title{font-size:16px;font-weight:600;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .save-ind{font-size:11px;color:var(--color-text-secondary);white-space:nowrap;}
 
 /* ===== タブ ===== */
 .tbar{display:flex;border-bottom:0.5px solid var(--color-border-tertiary);margin-bottom:1.2rem;background:var(--color-background-primary);border-radius:var(--border-radius-md) var(--border-radius-md) 0 0;overflow:hidden;}
 .t{flex:1;padding:10px 2px;font-size:11px;cursor:pointer;color:var(--color-text-secondary);border-bottom:2px solid transparent;background:none;border-left:none;border-right:none;border-top:none;text-align:center;}
-.t.active{color:var(--accent);border-bottom:2px solid var(--accent);font-weight:600;}
+.t.active{color:var(--accent-ink);border-bottom:2px solid var(--accent-ink);font-weight:600;}
 
 /* ===== カード ===== */
 .card{background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-lg);padding:1rem 1.25rem;margin-bottom:1rem;}
@@ -212,7 +227,7 @@ body{background:var(--color-background-secondary);color:var(--color-text-primary
 .pin-chips button.on{background:var(--accent);color:#fff;border-color:var(--accent);}
 .ptrow{display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;margin-bottom:8px;-webkit-overflow-scrolling:touch;}
 .pth{flex-shrink:0;width:68px;height:51px;border-radius:5px;border:1.5px solid var(--color-border-secondary);cursor:pointer;overflow:hidden;position:relative;background:#1c1c1c;}
-.pth.active{border-color:var(--accent);}
+.pth.active{border-color:var(--accent-ink);}
 .pth canvas{width:100%;height:100%;}
 .pth .pd{position:absolute;top:2px;right:2px;font-size:9px;background:rgba(0,0,0,.55);color:#fff;border:none;border-radius:3px;cursor:pointer;padding:1px 3px;display:none;}
 .pth:hover .pd{display:block;}
@@ -249,9 +264,9 @@ body{background:var(--color-background-secondary);color:var(--color-text-primary
 .share-app-card:active{background:#E8F1FA;}
 .share-app-icon{font-size:19px;line-height:1;}
 .share-app-text{flex:1;display:flex;flex-direction:column;gap:2px;}
-.share-app-title{font-size:13.5px;font-weight:600;color:var(--accent);}
+.share-app-title{font-size:13.5px;font-weight:600;color:var(--accent-ink);}
 .share-app-sub{font-size:11px;color:var(--color-text-secondary);line-height:1.5;}
-.share-app-arrow{font-size:17px;color:var(--accent);opacity:.6;}
+.share-app-arrow{font-size:17px;color:var(--accent-ink);opacity:.6;}
 @media (prefers-color-scheme:dark){
   :root:not([data-theme="light"]):not([data-theme="outdoor"]) .share-app-card{border-color:#2B4D70;background:#16202B;}
   :root:not([data-theme="light"]):not([data-theme="outdoor"]) .share-app-card:active{background:#1D2B39;}
@@ -293,7 +308,7 @@ body{background:var(--color-background-secondary);color:var(--color-text-primary
 .ptcmp-tbl td:first-child{text-align:left;font-weight:500;}
 .ptcmp-tbl tr.warn td{background:#FAEEDA;}
 .ptcmp-tbl tr.ng td{background:#FCEBEB;}
-.remeas-btn{font-size:11px;padding:2px 7px;border:0.5px solid var(--accent);border-radius:4px;cursor:pointer;background:none;color:var(--accent);white-space:nowrap;}
+.remeas-btn{font-size:11px;padding:2px 7px;border:0.5px solid var(--accent-ink);border-radius:4px;cursor:pointer;background:none;color:var(--accent-ink);white-space:nowrap;}
 
 /* ===== ライセンス・アップグレード ===== */
 .license-banner{background:linear-gradient(135deg,#0D3F73,var(--accent));color:#fff;border-radius:10px;padding:14px 16px;margin-bottom:12px;display:flex;align-items:center;gap:12px;}
@@ -310,12 +325,12 @@ body{background:var(--color-background-secondary);color:var(--color-text-primary
 .upgrade-modal-title{font-size:18px;font-weight:700;color:var(--color-text-primary);margin-bottom:4px;}
 .upgrade-modal-sub{font-size:13px;color:var(--color-text-secondary);}
 .upgrade-plan{margin:16px 20px;border:1.5px solid var(--accent);border-radius:12px;padding:16px;background:var(--color-background-secondary);}
-.upgrade-plan-name{font-size:15px;font-weight:700;color:var(--accent);margin-bottom:4px;}
+.upgrade-plan-name{font-size:15px;font-weight:700;color:var(--accent-ink);margin-bottom:4px;}
 .upgrade-plan-price{font-size:28px;font-weight:700;color:var(--color-text-primary);margin-bottom:12px;}
 .upgrade-plan-price span{font-size:14px;font-weight:400;color:var(--color-text-secondary);}
 .upgrade-plan-alt{font-size:12px;color:var(--color-text-secondary);margin:-6px 0 12px;line-height:1.5;}
 .upgrade-plan-alt b{color:var(--color-text-primary);font-weight:600;}
-.upgrade-btn-secondary{display:block;width:calc(100% - 40px);margin:0 20px 4px;background:var(--color-background-primary);color:var(--accent);border:1px solid var(--accent);border-radius:12px;font-size:14px;font-weight:600;padding:13px;cursor:pointer;font-family:inherit;text-align:center;text-decoration:none;}
+.upgrade-btn-secondary{display:block;width:calc(100% - 40px);margin:0 20px 4px;background:var(--color-background-primary);color:var(--accent-ink);border:1px solid var(--accent-ink);border-radius:12px;font-size:14px;font-weight:600;padding:13px;cursor:pointer;font-family:inherit;text-align:center;text-decoration:none;}
 .upgrade-plan-note{font-size:11px;color:var(--color-text-secondary);text-align:center;margin:8px 20px 0;line-height:1.6;}
 .upgrade-feature{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--color-text-primary);margin-bottom:6px;}
 .upgrade-feature-check{color:#1D9E75;font-weight:600;}
@@ -650,7 +665,7 @@ body{background:var(--color-background-secondary);color:var(--color-text-primary
       <!-- 復路インポートバナー -->
       <div id="ret-import-bar" style="display:none;background:#EEF4FF;border-radius:var(--border-radius-md);padding:10px 12px;margin-bottom:10px;">
         <div style="font-size:12px;font-weight:500;color:#1a3da8;margin-bottom:4px;">往路の測点名をインポート</div>
-        <div style="font-size:11px;color:var(--accent);margin-bottom:8px;">インポート後に測点名は自由に編集できます（TP位置変更など）</div>
+        <div style="font-size:11px;color:var(--accent-ink);margin-bottom:8px;">インポート後に測点名は自由に編集できます（TP位置変更など）</div>
         <div style="display:flex;flex-direction:column;gap:6px;">
           <button onclick="importReturnPoints('reverse')" style="padding:7px 12px;font-size:12px;text-align:left;background:#fff;border:0.5px solid var(--accent);border-radius:var(--border-radius-md);cursor:pointer;color:var(--accent);">
             ↩ 逆順（BM2→...→BM1）　通常の往復観測
@@ -785,25 +800,25 @@ body{background:var(--color-background-secondary);color:var(--color-text-primary
           </tr>
           <tr onclick="setTolCoef(2)" style="cursor:pointer;border-bottom:0.5px solid var(--color-border-tertiary);" onmouseover="this.style.background='var(--color-background-secondary)'" onmouseout="this.style.background=''">
             <td style="padding:5px 8px;color:var(--color-text-primary);">高精度</td>
-            <td style="text-align:center;padding:5px 8px;font-weight:600;color:var(--accent);">2</td>
+            <td style="text-align:center;padding:5px 8px;font-weight:600;color:var(--accent-ink);">2</td>
             <td style="text-align:center;padding:5px 8px;color:var(--color-text-secondary);">±4 mm</td>
             <td style="padding:5px 8px;color:var(--color-text-secondary);">精密な基準点・ダム等</td>
           </tr>
           <tr onclick="setTolCoef(5)" style="cursor:pointer;border-bottom:0.5px solid var(--color-border-tertiary);" onmouseover="this.style.background='var(--color-background-secondary)'" onmouseout="this.style.background=''">
             <td style="padding:5px 8px;color:var(--color-text-primary);">中精度</td>
-            <td style="text-align:center;padding:5px 8px;font-weight:600;color:var(--accent);">5</td>
+            <td style="text-align:center;padding:5px 8px;font-weight:600;color:var(--accent-ink);">5</td>
             <td style="text-align:center;padding:5px 8px;color:var(--color-text-secondary);">±10 mm</td>
             <td style="padding:5px 8px;color:var(--color-text-secondary);">縦断・構造物まわり</td>
           </tr>
           <tr onclick="setTolCoef(10)" style="cursor:pointer;border-bottom:0.5px solid var(--color-border-tertiary);" onmouseover="this.style.background='var(--color-background-secondary)'" onmouseout="this.style.background=''">
             <td style="padding:5px 8px;color:var(--color-text-primary);">標準</td>
-            <td style="text-align:center;padding:5px 8px;font-weight:600;color:var(--accent);">10</td>
+            <td style="text-align:center;padding:5px 8px;font-weight:600;color:var(--accent-ink);">10</td>
             <td style="text-align:center;padding:5px 8px;color:var(--color-text-secondary);">±20 mm</td>
             <td style="padding:5px 8px;color:var(--color-text-secondary);">一般土木・道路</td>
           </tr>
           <tr onclick="setTolCoef(20)" style="cursor:pointer;" onmouseover="this.style.background='var(--color-background-secondary)'" onmouseout="this.style.background=''">
             <td style="padding:5px 8px;color:var(--color-text-primary);">概略</td>
-            <td style="text-align:center;padding:5px 8px;font-weight:600;color:var(--accent);">20</td>
+            <td style="text-align:center;padding:5px 8px;font-weight:600;color:var(--accent-ink);">20</td>
             <td style="text-align:center;padding:5px 8px;color:var(--color-text-secondary);">±40 mm</td>
             <td style="padding:5px 8px;color:var(--color-text-secondary);">概略測量・造成</td>
           </tr>
@@ -841,7 +856,7 @@ body{background:var(--color-background-secondary);color:var(--color-text-primary
               oninput="markDirty();runChecks()" onchange="markDirty();runChecks()" style="width:100%;">
           </div>
         </div>
-        <div id="js-auto" style="display:none;margin-top:8px;background:#EEF4FF;border-radius:var(--border-radius-md);padding:9px 11px;font-size:12px;color:var(--accent);line-height:1.6;">
+        <div id="js-auto" style="display:none;margin-top:8px;background:#EEF4FF;border-radius:var(--border-radius-md);padding:9px 11px;font-size:12px;color:var(--accent-ink);line-height:1.6;">
           <span id="js-auto-txt"></span>
           <button onclick="applyAutoS()" style="margin-left:6px;font-size:12px;padding:4px 12px;border:0.5px solid var(--accent);border-radius:20px;cursor:pointer;background:#fff;color:var(--accent);">この値を使う</button>
         </div>
@@ -1107,7 +1122,7 @@ function applyLicenseKey(){
   const key = normalizeLicenseKey(document.getElementById('license-key-input').value);
   const msg = document.getElementById('license-key-msg');
   if(!key){msg.textContent='キーを入力してください。';msg.style.color='#E24B4A';return;}
-  msg.textContent='🔍 確認中...';msg.style.color='var(--accent)';
+  msg.textContent='🔍 確認中...';msg.style.color='var(--accent-ink)';
   verifyKeyOnline(key).then(result=>{
     if(result.valid){
       localStorage.setItem('suijun_license', key);
@@ -1130,7 +1145,7 @@ function applyLicenseKey(){
 // 別端末で使用中のキーを、この端末に付け替える（機種変更などの正当なケース向け）
 async function switchDeviceAndApply(key){
   const msg = document.getElementById('license-key-msg');
-  msg.textContent='🔄 切り替え中...';msg.style.color='var(--accent)';
+  msg.textContent='🔄 切り替え中...';msg.style.color='var(--accent-ink)';
   try{
     const res = await fetch(LICENSE_WORKER_BASE+'/switch-device',{
       method:'POST',headers:{'Content-Type':'application/json'},
@@ -1171,7 +1186,7 @@ async function resendLicenseKey(){
   if(!email || email.indexOf('@')<1){
     msg.textContent='メールアドレスを入力してください。';msg.style.color='#E24B4A';return;
   }
-  msg.textContent='📨 送信中...';msg.style.color='var(--accent)';
+  msg.textContent='📨 送信中...';msg.style.color='var(--accent-ink)';
   try{
     const res=await fetch(LICENSE_WORKER_BASE+'/resend',{
       method:'POST',headers:{'Content-Type':'application/json'},
@@ -2528,7 +2543,7 @@ function renderTbl(){
     };
 
     const tr=document.createElement('tr');
-    if(isFS)tr.style.color=isRet?'#d97706':'var(--accent)';
+    if(isFS)tr.style.color=isRet?'#d97706':'var(--accent-ink)';
     const remeasBadge=r.remeasure?`<span style="font-size:9px;padding:1px 5px;border-radius:3px;background:#FAEEDA;color:#854F0B;margin-left:3px;">再測</span>`:'';
     tr.innerHTML=`
       <td style="vertical-align:top;min-width:90px;">
