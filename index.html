@@ -330,6 +330,8 @@ body{background:var(--color-background-secondary);color:var(--color-text-primary
 .upgrade-close{display:block;width:calc(100% - 40px);margin:12px 20px 0;background:none;border:0.5px solid var(--color-border-secondary);border-radius:12px;font-size:14px;padding:12px;cursor:pointer;font-family:inherit;color:var(--color-text-secondary);}
 .xb-locked{opacity:.5;position:relative;}
 .xb-locked::after{content:'🔒';position:absolute;right:12px;top:50%;transform:translateY(-50%);font-size:14px;}
+.gear-btn{width:38px;height:38px;border-radius:10px;border:1px solid var(--color-border-secondary);background:var(--color-background-primary);color:var(--color-text-primary);font-size:19px;line-height:1;cursor:pointer;font-family:inherit;padding:0;}
+.gear-btn:active{background:var(--color-background-secondary);}
 .dsp-label{font-size:12px;font-weight:600;color:var(--color-text-primary);margin:14px 0 6px;}
 .dsp-row{display:flex;gap:6px;}
 .dsp-row button{flex:1;padding:10px 4px;font-size:13px;font-family:inherit;border:1px solid var(--color-border-secondary);border-radius:10px;background:var(--color-background-primary);color:var(--color-text-primary);cursor:pointer;}
@@ -361,7 +363,10 @@ body{background:var(--color-background-secondary);color:var(--color-text-primary
       <div class="home-title">SiteLogger</div>
       <div class="home-sub">路線を選択して観測を開始</div>
     </div>
-    <a href="terms.html" style="font-size:11px;color:var(--color-text-secondary);text-decoration:none;">v0.6</a>
+    <div style="display:flex;align-items:center;gap:10px;">
+      <button type="button" class="gear-btn" onclick="showDisplay()" aria-label="表示設定">⚙</button>
+      <a href="terms.html" style="font-size:11px;color:var(--color-text-secondary);text-decoration:none;">v0.6</a>
+    </div>
   </div>
   <div class="route-list" id="route-list"></div>
   <div id="storage-warn-banner" class="storage-warn-banner">⚠️ ストレージの空き容量が少なくなっています。データが保存されない可能性があります。下の「💾 バックアップを保存」でデータを書き出してください。</div>
@@ -395,7 +400,6 @@ body{background:var(--color-background-secondary);color:var(--color-text-primary
     <a href="terms.html#tab-privacy" style="font-size:11px;color:var(--color-text-secondary);text-decoration:none;border-bottom:0.5px solid var(--color-border-secondary);margin:0 8px;">プライバシーポリシー</a>
     <a href="https://forms.gle/qoXR73eMvkxGerjL6" target="_blank" style="font-size:11px;color:var(--color-text-secondary);text-decoration:none;border-bottom:0.5px solid var(--color-border-secondary);margin:0 8px;">💬 フィードバック</a>
     <a href="tokushoho.html" style="font-size:11px;color:var(--color-text-secondary);text-decoration:none;border-bottom:0.5px solid var(--color-border-secondary);margin:0 8px;">特定商取引法に基づく表記</a>
-    <a href="javascript:void(0)" onclick="showDisplay()" style="font-size:11px;color:var(--color-text-secondary);text-decoration:none;border-bottom:0.5px solid var(--color-border-secondary);margin:0 8px;">🎨 表示設定</a>
   </div>
 </div>
 
